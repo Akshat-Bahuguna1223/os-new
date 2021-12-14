@@ -1,0 +1,521 @@
+FCFS
+#include<stdio.h>
+#include <stdlib.h>
+struct process_struct
+{
+  int pid;  
+  int at;       
+  int bt;       
+  int ct,wt,tat,rt,start_time;   
+}ps[100];       
+
+int findmax(int a, int b)
+{
+    return a>b?a:b;
+}
+
+int comparatorAT(const void * a, const void *b)
+{
+   int x =((struct process_struct *)a) -> at;
+   int y =((struct process_struct *)b) -> at;
+   if(x<y)
+     return -1;  
+   else if( x>=y) 
+    return 1;    
+   
+
+} 
+int comparatorPID(const void * a, const void *b)
+{
+   int x =((struct process_struct *)a) -> pid;
+   int y =((struct process_struct *)b) -> pid;
+   if(x<y)
+     return -1;  
+   else if( x>=y)
+    return 1;   
+
+} 
+int main()
+{
+    int n;
+    printf("Enter total number of processes: ");
+    scanf("%d",&n);
+    float sum_tat=0,sum_wt=0,sum_rt=0;
+    int length_cycle,total_idle_time=0;
+    float cpu_utilization;
+    
+    for(int i=0;i<n;i++)
+    {
+        printf("\nEnter Process %d Arrival Time: ",i);
+        scanf("%d",&ps[i].at);
+        ps[i].pid = i ;
+    }
+    
+    for(int i=0;i<n;i++)
+    {
+        printf("\nEnter Process %d Burst Time: ",i);
+        scanf("%d",&ps[i].bt);
+    }
+  
+    qsort((void *)ps,n, sizeof(struct process_struct),comparatorAT);
+   
+    for(int i=0;i<n;i++)
+    {
+      ps[i].start_time = (i==0) ? ps[i].at : findmax(ps[i].at, ps[i-1].ct);  
+      ps[i].ct =  ps[i].start_time + ps[i].bt;
+      ps[i].tat = ps[i].ct-ps[i].at;       
+      ps[i].wt = ps[i].tat-ps[i].bt;
+      ps[i].rt=ps[i].wt;
+       
+      sum_tat += ps[i].tat;
+      sum_wt += ps[i].wt;
+      sum_rt += ps[i].rt;
+      total_idle_time += (i==0) ? 0 : (ps[i].start_time -  ps[i-1].ct);
+    }
+    
+    length_cycle = ps[n-1].ct - ps[0].start_time; 
+    
+    qsort((void *)ps,n, sizeof(struct process_struct),comparatorPID);
+
+    printf("\nProcess No.\tAT\tCPU Burst Time\tCT\tTAT\tWT\tRT\n");
+    for(int i=0;i<n;i++)
+     printf("%d\t\t%d\t%d\t\t%d\t%d\t%d\t%d\n",ps[i].pid,ps[i].at,ps[i].bt,ps[i].ct,ps[i].tat,ps[i].wt,ps[i].rt);
+
+    printf("\n");    
+    
+    cpu_utilization = (float)(length_cycle - total_idle_time)/ length_cycle;
+
+    printf("\nAverage Turn Around time= %f ",sum_tat/n);
+    printf("\nAverage Waiting Time= %f ",sum_wt/n);
+    printf("\nAverage Response Time= %f ",sum_rt/n);
+    printf("\nThroughput= %f",n/(float)length_cycle);    
+    printf("\nCPU Utilization(Percentage)= %f",cpu_utilization*100);
+
+    printf("\n");
+    return 0;
+}
+
+
+
+SRTF
+#include <stdio.h>
+#include <stdbool.h>
+#include <limits.h>
+
+struct process_struct
+{
+    int pid;
+    int at;
+    int bt;
+    int ct, wt, tat, rt, start_time;
+} ps[100];
+
+int findmax(int a, int b)
+{
+    return a > b ? a : b;
+}
+
+int findmin(int a, int b)
+{
+    return a < b ? a : b;
+}
+
+int main()
+{
+
+    int n;
+    float bt_remaining[100];
+    bool is_completed[100] = {false}, is_first_process = true;
+    int current_time = 0;
+    int completed = 0;
+    ;
+    float sum_tat = 0, sum_wt = 0, sum_rt = 0, total_idle_time = 0, length_cycle, prev = 0;
+    float cpu_utilization;
+
+    int max_completion_time, min_arrival_time;
+
+    printf("Enter total number of processes: ");
+    scanf("%d", &n);
+    for (int i = 0; i < n; i++)
+    {
+        printf("\nEnter Process %d Arrival Time: ", i);
+        scanf("%d", &ps[i].at);
+        ps[i].pid = i;
+    }
+
+    for (int i = 0; i < n; i++)
+    {
+        printf("\nEnter Process %d Burst Time: ", i);
+        scanf("%d", &ps[i].bt);
+        bt_remaining[i] = ps[i].bt;
+    }
+
+    while (completed != n)
+    {
+        int min_index = -1;
+        int minimum = INT_MAX;
+        for (int i = 0; i < n; i++)
+        {
+            if (ps[i].at <= current_time && is_completed[i] == false)
+            {
+                if (bt_remaining[i] < minimum)
+                {
+                    minimum = bt_remaining[i];
+                    min_index = i;
+                }
+                if (bt_remaining[i] == minimum)
+                {
+                    if (ps[i].at < ps[min_index].at)
+                    {
+                        minimum = bt_remaining[i];
+                        min_index = i;
+                    }
+                }
+            }
+        }
+
+        if (min_index == -1)
+        {
+            current_time++;
+        }
+        else
+        {
+            if (bt_remaining[min_index] == ps[min_index].bt)
+            {
+                ps[min_index].start_time = current_time;
+                total_idle_time += (is_first_process == true) ? 0 : (ps[min_index].start_time - prev);
+                is_first_process = false;
+            }
+            bt_remaining[min_index] -= 1;
+            current_time++;
+            prev = current_time;
+            if (bt_remaining[min_index] == 0)
+            {
+                ps[min_index].ct = current_time;
+                ps[min_index].tat = ps[min_index].ct - ps[min_index].at;
+                ps[min_index].wt = ps[min_index].tat - ps[min_index].bt;
+                ps[min_index].rt = ps[min_index].start_time - ps[min_index].at;
+
+                sum_tat += ps[min_index].tat;
+                sum_wt += ps[min_index].wt;
+                sum_rt += ps[min_index].rt;
+                completed++;
+                is_completed[min_index] = true;
+            }
+        }
+    }
+    max_completion_time = INT_MIN;
+    min_arrival_time = INT_MAX;
+    for (int i = 0; i < n; i++)
+    {
+        max_completion_time = findmax(max_completion_time, ps[i].ct);
+        min_arrival_time = findmin(min_arrival_time, ps[i].at);
+    }
+    length_cycle = max_completion_time - min_arrival_time;
+
+    //Output
+    printf("\nProcess No.\tAT\tCPU Burst Time\tCT\tTAT\tWT\tRT\n");
+    for (int i = 0; i < n; i++)
+        printf("%d\t\t%d\t%d\t\t%d\t%d\t%d\t%d\n", ps[i].pid, ps[i].at, ps[i].bt, ps[i].ct, ps[i].tat, ps[i].wt, ps[i].rt);
+
+    printf("\n");
+
+    cpu_utilization = (float)(length_cycle - total_idle_time) / length_cycle;
+
+    printf("\nAverage Turn Around time= %f ", (float)sum_tat / n);
+    printf("\nAverage Waiting Time= %f ", (float)sum_wt / n);
+    printf("\nAverage Response Time= %f ", (float)sum_rt / n);
+    printf("\nThroughput= %f", n / (float)length_cycle);
+    printf("\nCPU Utilization(Percentage)= %f", cpu_utilization * 100);
+    return 0;
+}
+
+ROUND ROBIN
+#include <stdio.h>
+#include <conio.h>
+
+void main()
+{
+    int i, NOP, sum = 0, count = 0, y, quant, wt = 0, tat = 0, at[10], bt[10], temp[10];
+    float avg_wt, avg_tat;
+    printf(" Total number of process in the system: ");
+    scanf("%d", &NOP);
+    y = NOP;
+
+    for (i = 0; i < NOP; i++)
+    {
+        printf("\n Enter the Arrival and Burst time of the Process[%d]\n", i + 1);
+        printf(" Arrival time is: \t");
+        scanf("%d", &at[i]);
+        printf(" \nBurst time is: \t");
+        scanf("%d", &bt[i]);
+        temp[i] = bt[i];
+    }
+    printf("Enter the Time Quantum for the process: \t");
+    scanf("%d", &quant);
+    printf("\n Process No \t\t Burst Time \t\t TAT \t\t Waiting Time ");
+    for (sum = 0, i = 0; y != 0;)
+    {
+        if (temp[i] <= quant && temp[i] > 0)
+        {
+            sum = sum + temp[i];
+            temp[i] = 0;
+            count = 1;
+        }
+        else if (temp[i] > 0)
+        {
+            temp[i] = temp[i] - quant;
+            sum = sum + quant;
+        }
+        if (temp[i] == 0 && count == 1)
+        {
+            y--;
+            printf("\nProcess No[%d] \t\t %d\t\t\t\t %d\t\t\t %d", i + 1, bt[i], sum - at[i], sum - at[i] - bt[i]);
+            wt = wt + sum - at[i] - bt[i];
+            tat = tat + sum - at[i];
+            count = 0;
+        }
+        if (i == NOP - 1)
+        {
+            i = 0;
+        }
+        else if (at[i + 1] <= sum)
+        {
+            i++;
+        }
+        else
+        {
+            i = 0;
+        }
+    }
+    avg_wt = wt * 1.0 / NOP;
+    avg_tat = tat * 1.0 / NOP;
+    printf("\n Average Turn Around Time: \t%f", avg_wt);
+    printf("\n Average Waiting Time: \t%f", avg_tat);
+    getch();
+}
+
+
+FCFS PAGE REPLACEMENT
+#include <stdio.h>
+int main()
+{
+    int i, j, n, a[50], frame[10], no, k, avail, count = 0;
+    printf("\n ENTER THE NUMBER OF PAGES:\n");
+    scanf("%d", &n);
+    printf("\n ENTER THE PAGE NUMBER :\n");
+    for (i = 1; i <= n; i++)
+        scanf("%d", &a[i]);
+
+    printf("\n ENTER THE NUMBER OF FRAMES :");
+    scanf("%d", &no);
+    for (i = 0; i < no; i++)
+        frame[i] = -1;
+    j = 0;
+    printf("\tref string\t page frames\n");
+    for (i = 1; i <= n; i++)
+    {
+        printf("%d\t\t", a[i]);
+        avail = 0;
+        for (k = 0; k < no; k++)
+            if (frame[k] == a[i])
+                avail = 1;
+
+        if (avail == 0)
+        {
+            frame[j] = a[i];
+            j = (j + 1) % no;
+            count++;
+            for (k = 0; k < no; k++)
+                printf("%d\t", frame[k]);
+        }
+        printf("\n");
+    }
+    printf("Page Fault Is %d", count);
+    return 0;
+}
+
+
+FCFS DISK SCHEDULING
+#include <stdio.h>
+int main()
+{
+    int t[20], n, i, j, tohm[20], tot = 0;
+    float avhm;
+
+    printf("Enter the no.of tracks: ");
+    scanf("%d", &n);
+    printf("\nEnter the tracks to be traversed:");
+
+    for (i = 2; i < n + 2; i++)
+        scanf("%d", &t[i]);
+
+    for (i = 1; i < n + 1; i++)
+    {
+        tohm[i] = t[i + 1] - t[i];
+        if (tohm[i] < 0)
+
+            tohm[i] = tohm[i] * (-1);
+    }
+
+    for (i = 1; i < n + 1; i++)
+        tot += tohm[i];
+
+    avhm = (float)tot / n;
+
+    printf("Tracks traversed\tDifference between tracks\n");
+
+    for (i = 1; i < n + 1; i++)
+        printf("%d\t\t\t%d\n", t[i], tohm[i]);
+    printf("\nAverage header movements: %f", avhm);
+    return 0;
+}
+
+
+LEAST REPLACEMENT POLICY
+#include <stdio.h> 
+int main()
+{
+    int q[20], p[50], c = 0, c1, d, f, i, j, k = 0, n, r, t, b[20], c2[20];
+
+    printf("Enter no of pages:");
+    scanf("%d", &n);
+
+    printf("Enter the reference string:");
+    for (i = 0; i < n; i++)
+        scanf("%d", &p[i]);
+
+    printf("Enter no of frames:");
+    scanf("%d", &f);
+
+    q[k] = p[k];
+    printf("\n\t%d\n", q[k]);
+    c++;
+    k++;
+    for (i = 1; i < n; i++)
+    {
+        c1 = 0;
+
+        for (j = 0; j < f; j++)
+        {
+            if (p[i] != q[j])
+                c1++;
+        }
+        if (c1 == f)
+        {
+
+            c++;
+            if (k < f)
+            {
+            }
+            else
+            {
+
+                q[k] = p[i];
+                k++;
+                for (j = 0; j < k; j++)
+                    printf("\t%d", q[j]);
+                printf("\n");
+
+                for (r = 0; r < f; r++)
+                {
+
+                    c2[r] = 0;
+                    for (j = i - 1; j < n; j--)
+                    {
+                        if (q[r] != p[j])
+                            c2[r]++;
+                        else
+                            break;
+                    }
+                }
+                for (r = 0; r < f; r++)
+                    b[r] = c2[r];
+                for (r = 0; r < f; r++)
+                {
+                    for (j = r; j < f; j++)
+                    {
+                        if (b[r] < b[j])
+                        {
+                            t = b[r];
+                            b[r] = b[j];
+                            b[j] = t;
+                        }
+                    }
+                }
+                for (r = 0; r < f; r++)
+                {
+                    if (c2[r] == b[0])
+                        q[r] = p[i];
+                    printf("\t%d", q[r]);
+                }
+                printf("\n");
+            }
+        }
+        printf("\nThe no of page faults is %d", c);
+    }
+    return 0;
+}
+
+SCAN DISK SCHEDULING
+#include <stdio.h>
+int main()
+{
+    int t[20], d[20], h, i, j, n, temp, k, atr[20], tot, p, sum = 0;
+    printf("\nEnter the no of tracks to be traveresed: ");
+    scanf("%d'", &n);
+    printf("\nEnter the position of head: ");
+    scanf("%d", &h);
+    t[0] = 0;
+    t[1] = h;
+    printf("\nEnter the tracks: ");
+    for (i = 2; i < n + 2; i++)
+        scanf("%d", &t[i]);
+
+    for (i = 0; i < n + 2; i++)
+    {
+        for (j = 0; j < (n + 2) - i - 1; j++)
+        {
+            if (t[j] > t[j + 1])
+            {
+                temp = t[j];
+                t[j] = t[j + 1];
+
+                t[j + 1] = temp;
+            }
+        }
+    }
+
+    for (i = 0; i < n + 2; i++)
+        if (t[i] == h)
+            FF
+            {
+                j = i;
+                k = i;
+            }
+
+    p = 0;
+    while (t[j] != 0)
+    {
+        atr[p] = t[j];
+        j--;
+        p++;
+    }
+    atr[p] = t[j];
+    for (p = k + 1; p < n + 2; p++, k++)
+        atr[p] = t[k + 1];
+
+    for (j = 0; j < n + 1; j++)
+    {
+        if (atr[j] > atr[j + 1])
+            d[j] = atr[j] - atr[j + 1];
+        else
+            d[j] = atr[j + 1] - atr[j];
+        sum += d[j];
+    }
+
+    printf("\nAverage header movements:%f", (float)sum / n);
+
+    return 0;
+}
+
